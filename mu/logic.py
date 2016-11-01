@@ -39,10 +39,11 @@ from mu.contrib import uflash, appdirs, microfs
 from mu import __version__
 
 
-#: USB product ID.
-MICROBIT_PID = 516
-#: USB vendor ID.
-MICROBIT_VID = 3368
+#: List of supported board USB IDs.  Each board is a tuple of USB vendor ID,
+#  USB product ID.
+BOARD_IDS = [
+    (3368, 516)  # micro:bit USB VID, PID
+]
 #: The user's home directory.
 HOME_DIRECTORY = os.path.expanduser('~')
 #: The default directory for Python scripts. This needs to be in the user's
@@ -81,10 +82,12 @@ def find_microbit():
     for port in available_ports:
         pid = port.productIdentifier()
         vid = port.vendorIdentifier()
-        if pid == MICROBIT_PID and vid == MICROBIT_VID:
-            port_name = port.portName()
-            logger.info('Found micro:bit with portName: {}'.format(port_name))
-            return port_name
+        # Look for the port VID & PID in the list of known board IDs.
+        for board_vid, board_pid in BOARD_IDS:
+            if pid == board_pid and vid == board_vid:
+                port_name = port.portName()
+                logger.info('Found micro:bit with portName: {}'.format(port_name))
+                return port_name
     logger.warning('Could not find micro:bit.')
     logger.debug('Available ports:')
     logger.debug(['PID:{} VID:{} PORT:{}'.format(p.productIdentifier(),
