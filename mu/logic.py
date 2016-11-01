@@ -39,15 +39,17 @@ from mu.contrib import uflash, appdirs, microfs
 from mu import __version__
 
 
-#: List of supported board USB IDs.  Each board is a tuple of USB vendor ID,
-#  USB product ID.
-BOARD_IDS = [
+#: Set of supported board USB IDs.  Each board is a unique tuple of USB vendor ID,
+#  USB product ID.  This list can be appended to by users by adding new entries
+#  to the board_ids value in settings.json.  Note that the items below cannot
+#  be removed by users and will always be available.
+BOARD_IDS = set((
     (3368, 516),       # micro:bit USB VID, PID
     (0x239A, 0x800B),  # Adafruit Feather M0 CDC only USB VID, PID
     (0x239A, 0x8016),  # Adafruit Feather M0 CDC + MSC USB VID, PID
     (0x239A, 0x8013),  # Adafruit Metro M0 CDC only USB VID, PID
     (0x239A, 0x8015)   # Adafruit Metro Mo CDC + MSC USB VID, PID
-]
+))
 #: The user's home directory.
 HOME_DIRECTORY = os.path.expanduser('~')
 #: The default directory for Python scripts. This needs to be in the user's
@@ -330,6 +332,29 @@ class Editor:
                             pass
                         else:
                             self._view.add_tab(path, text)
+                if 'board_ids' in old_session:
+                    # Merge board USB IDs specified in the settings file to the
+                    # global board ID state so users can add extra boards (but
+                    # not remove boards from the list shipped in this file).
+                    for board in old_session['board_ids']:
+                        # Skip anything malformed.
+                        if len(board) != 2:
+                            logger.debug('Skipping malformed board ID: {}' \
+                                         .format(board))
+                            continue
+                        vid = board[0]
+                        pid = board[1]
+                        # Skip anything that isn't an integer VID, PID.
+                        if not isinstance(vid, int) or not isinstance(pid, int):
+                            logger.debug('Skipping invalid board VID: {} PID: {}' \
+                                         .format(vid, pid))
+                            continue
+                        # Skip anything already in the list of known boards.
+                        if (vid, pid) in BOARD_IDS:
+                            continue
+                        logger.debug('Adding board with VID: 0x{:04X} PID: 0x{:04X}' \
+                                     .format(vid, pid))
+                        BOARD_IDS.add((vid, pid))
         if not self._view.tab_count:
             py = 'from microbit import *{}{}# Write your code here :-)'.format(
                 os.linesep, os.linesep)
@@ -638,7 +663,8 @@ class Editor:
                 paths.append(widget.path)
         session = {
             'theme': self.theme,
-            'paths': paths
+            'paths': paths,
+            'board_ids': list(BOARD_IDS)
         }
         logger.debug(session)
         settings_path = get_settings_path()
