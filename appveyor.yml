@@ -49,13 +49,10 @@ install:
   - cmd: pyinstaller package\pyinstaller.spec
   - cmd: dir dist
   - ps: Rename-Item .\dist\mu.exe mu-$(get-date -f yyyy-MM-dd_HH_mm_ss).exe
+  - ps: Get-ChildItem .\dist\*.exe | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
 
 # Not a project with an msbuild file, build done at install.
 build: None
 
 # No tests for now
 #test_script: None
-
-artifacts:
-  - path: dist\mu.exe
-    name: mu
